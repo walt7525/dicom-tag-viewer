@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -31,6 +30,7 @@
             padding: 8px;
             word-wrap: break-word; /* Ensure text wraps within the table cells */
             word-break: break-all; /* Break long words */
+            white-space: pre-wrap; /* Preserve spaces and line breaks */
         }
         th {
             background-color: #f4f4f4;
@@ -79,7 +79,7 @@
 
         // Tag name mapping (you may need to extend or customize this mapping)
         const tagNameMap = {
-			'x00020000': 'file Meta Information Group Length',
+            'x00020000': 'file Meta Information Group Length', 
 			'x00020001': 'file Meta Information Version',
 			'x00020002': 'Media Storage SOP class UId',
 			'x00020003': 'Media Storage SOP Instance UId',
@@ -4194,7 +4194,7 @@
 			'xfffee000': 'Item',
 			'xfffee00d': 'Item delimitation Item',
 			'xfffee0dd': 'Sequence delimitation Item',
-            // Add more tags as needed        
+            // Add more tags as needed    			
         };
 
         fileInput1.addEventListener('change', event => handleFileSelect(event, 1));
@@ -4229,69 +4229,68 @@
             }
         }
 
- function parseDicomFile(file, fileNumber) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        try {
-            const arrayBuffer = event.target.result;
-            const byteArray = new Uint8Array(arrayBuffer);
-            const dataSet = dicomParser.parseDicom(byteArray);
+        function parseDicomFile(file, fileNumber) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const arrayBuffer = event.target.result;
+                    const byteArray = new Uint8Array(arrayBuffer);
+                    const dataSet = dicomParser.parseDicom(byteArray);
 
-            const dicomData = {};
-            for (let tag in dataSet.elements) {
-                const element = dataSet.elements[tag];
-                const vr = element.vr || ''; // VR is an attribute of the element
-                let value = '';
+                    const dicomData = {};
+                    for (let tag in dataSet.elements) {
+                        const element = dataSet.elements[tag];
+                        const vr = element.vr || ''; // VR is an attribute of the element
+                        let value = '';
 
-                // Determine how to extract the value based on VR
-                switch (vr) {
-                    case 'US': // Unsigned Short
-                        value = dataSet.uint16(tag);
-                        break;
-                    case 'SS': // Signed Short
-                        value = dataSet.int16(tag);
-                        break;
-                    case 'UL': // Unsigned Long
-                        value = dataSet.uint32(tag);
-                        break;
-                    case 'SL': // Signed Long
-                        value = dataSet.int32(tag);
-                        break;
-                    case 'FL': // Floating Point Single (32-bit)
-                        value = dataSet.float(tag);
-                        break;
-                    case 'FD': // Floating Point Double (64-bit)
-                        value = dataSet.double(tag);
-                        break;
-                    case 'OB': // Other Byte String
-                    case 'OW': // Other Word String
-                        value = `Binary data (length: ${element.length})`;
-                        break;
-                    default: // Default to string for other types (e.g., LO, PN, SH, etc.)
-                        value = dataSet.string(tag);
-                        break;
+                        // Determine how to extract the value based on VR
+                        switch (vr) {
+                            case 'US': // Unsigned Short
+                                value = dataSet.uint16(tag);
+                                break;
+                            case 'SS': // Signed Short
+                                value = dataSet.int16(tag);
+                                break;
+                            case 'UL': // Unsigned Long
+                                value = dataSet.uint32(tag);
+                                break;
+                            case 'SL': // Signed Long
+                                value = dataSet.int32(tag);
+                                break;
+                            case 'FL': // Floating Point Single (32-bit)
+                                value = dataSet.float(tag);
+                                break;
+                            case 'FD': // Floating Point Double (64-bit)
+                                value = dataSet.double(tag);
+                                break;
+                            case 'OB': // Other Byte String
+                            case 'OW': // Other Word String
+                                value = `Binary data (length: ${element.length})`;
+                                break;
+                            default: // Default to string for other types (e.g., LO, PN, SH, etc.)
+                                value = dataSet.string(tag);
+                                break;
+                        }
+
+                        dicomData[tag] = {
+                            vr: vr,
+                            value: value
+                        };
+                    }
+
+                    if (fileNumber === 1) {
+                        dicomData1 = dicomData;
+                    } else {
+                        dicomData2 = dicomData;
+                    }
+
+                    updateTable();
+                } catch (error) {
+                    alert('Error parsing DICOM file: ' + error.message);
                 }
-
-                dicomData[tag] = {
-                    vr: vr,
-                    value: value
-                };
-            }
-
-            if (fileNumber === 1) {
-                dicomData1 = dicomData;
-            } else {
-                dicomData2 = dicomData;
-            }
-
-            updateTable();
-        } catch (error) {
-            alert('Error parsing DICOM file: ' + error.message);
+            };
+            reader.readAsArrayBuffer(file);
         }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
 
         function updateTable() {
             const allTags = new Set([...Object.keys(dicomData1), ...Object.keys(dicomData2)]);
@@ -4320,6 +4319,14 @@
 
             dicomTableBody.innerHTML = tableContent;
         }
+
+        // Preserve whitespace when copying text
+        document.addEventListener('copy', function(e) {
+            const selection = window.getSelection().toString();
+            const modifiedText = selection.replace(/ /g, '\u00A0');
+            e.clipboardData.setData('text/plain', modifiedText);
+            e.preventDefault(); // Prevent default copy behavior
+        });
     </script>
 </body>
 </html>
